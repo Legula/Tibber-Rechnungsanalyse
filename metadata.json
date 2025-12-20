@@ -1,5 +1,5 @@
 {
-  "name": "Tibber Historien-Analyzer",
-  "description": "Laden Sie Ihre Tibber PDF-Rechnungen hoch, um eine dauerhafte Historie Ihrer Stromkosten, Verbräuche und Trends über mehrere Jahre hinweg zu verwalten.",
+  "name": "Smart Strom-Analyzer",
+  "description": "Analysieren Sie Ihre Stromrechnungen unabhängig vom Anbieter. Pflegen Sie eine dauerhafte Historie Ihrer Kosten, Verbräuche und Trends durch KI-gestützte PDF-Analyse.",
   "requestFramePermissions": []
 }

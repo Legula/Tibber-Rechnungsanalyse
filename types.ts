@@ -1,12 +1,18 @@
+
 export interface InvoiceData {
   id: string;
-  month: string; // e.g., "Januar"
-  monthIndex: number; // 0-11 for sorting
+  month: string;
+  monthIndex: number;
   year: number;
   consumptionKwh: number;
   totalCost: number;
-  avgPriceCent: number; // Calculated or extracted: totalCost / consumptionKwh * 100
+  avgPriceCent: number;
   fileName: string;
+  // Preisbestandteile
+  baseFeeCost: number;       // Fixer Grundpreis
+  workingPriceCost: number;  // Kosten für verbrauchte Energie (Arbeitspreis)
+  gridFeesCost: number;      // Netzentgelte (falls separat ausgewiesen)
+  taxesAndLeviesCost: number; // Steuern, Abgaben, Umlagen
 }
 
 export enum AnalyzeStatus {

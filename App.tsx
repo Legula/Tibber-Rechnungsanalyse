@@ -8,7 +8,7 @@ import { Charts } from './components/Charts';
 import { InvoiceTable } from './components/InvoiceTable';
 import { Zap, LayoutDashboard, History, Trash2 } from 'lucide-react';
 
-const STORAGE_KEY = 'tibber_analyzer_data';
+const STORAGE_KEY = 'strom_analyzer_data';
 
 const App: React.FC = () => {
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
@@ -17,12 +17,24 @@ const App: React.FC = () => {
     status: AnalyzeStatus.IDLE
   });
 
-  // Load from localStorage on mount
+  // Load and sanitize from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        setInvoices(JSON.parse(saved));
+        const parsed: InvoiceData[] = JSON.parse(saved);
+        
+        // Sanitize: Remove any accidental duplicates that might have been saved
+        const uniqueInvoices = parsed.reduce((acc: InvoiceData[], current) => {
+          const x = acc.find(item => item.monthIndex === current.monthIndex && item.year === current.year);
+          if (!x) {
+            return acc.concat([current]);
+          } else {
+            return acc;
+          }
+        }, []);
+
+        setInvoices(uniqueInvoices);
       } catch (e) {
         console.error("Fehler beim Laden der gespeicherten Daten", e);
       }
@@ -38,7 +50,6 @@ const App: React.FC = () => {
     setProcessingState({ status: AnalyzeStatus.PROCESSING, message: 'Starte Analyse...' });
     
     const newInvoices: InvoiceData[] = [];
-    let errorCount = 0;
 
     const promises = Array.from(files).map(async (file, index) => {
       try {
@@ -56,8 +67,7 @@ const App: React.FC = () => {
         });
 
       } catch (err) {
-        console.error(err);
-        errorCount++;
+        console.error("Fehler bei Datei " + file.name, err);
       }
     });
 
@@ -65,14 +75,17 @@ const App: React.FC = () => {
 
     if (newInvoices.length > 0) {
       setInvoices(prev => {
-        // Simple duplicate check based on month and year
+        // Robust duplicate check based on monthIndex and year
         const filteredNew = newInvoices.filter(newInv => 
-          !prev.some(oldInv => oldInv.month === newInv.month && oldInv.year === newInv.year)
+          !prev.some(oldInv => oldInv.monthIndex === newInv.monthIndex && oldInv.year === newInv.year)
         );
-        return [...prev, ...filteredNew].sort((a, b) => {
+        
+        const updated = [...prev, ...filteredNew].sort((a, b) => {
            if (a.year !== b.year) return a.year - b.year;
            return a.monthIndex - b.monthIndex;
         });
+        
+        return updated;
       });
       
       setProcessingState({ 
@@ -90,20 +103,22 @@ const App: React.FC = () => {
   }, []);
 
   const handleDelete = (id: string) => {
-    if (confirm("Möchten Sie diese Rechnung wirklich löschen?")) {
-      setInvoices(prev => prev.filter(inv => inv.id !== id));
+    if (window.confirm("Möchten Sie diesen Eintrag wirklich löschen?")) {
+      setInvoices(currentInvoices => {
+        const filtered = currentInvoices.filter(inv => inv.id !== id);
+        return filtered;
+      });
     }
   };
 
   const handleClearAll = () => {
-    if (confirm("Möchten Sie ALLE gespeicherten Daten unwiderruflich löschen?")) {
+    if (window.confirm("Möchten Sie ALLE gespeicherten Daten unwiderruflich löschen?")) {
       setInvoices([]);
       localStorage.removeItem(STORAGE_KEY);
     }
   };
 
   const availableYears = useMemo(() => {
-    // Fixed: Explicitly type the sort parameters to prevent 'unknown' type error on localeCompare
     const years = Array.from(new Set(invoices.map(inv => inv.year.toString())));
     return years.sort((a: string, b: string) => b.localeCompare(a));
   }, [invoices]);
@@ -122,7 +137,7 @@ const App: React.FC = () => {
                 <Zap className="w-5 h-5 text-white" />
             </div>
             <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-cyan-600">
-              Tibber Historie
+              Smart Strom-Analyzer
             </h1>
           </div>
           
@@ -138,7 +153,7 @@ const App: React.FC = () => {
               </button>
             )}
             <div className="text-sm text-slate-500 hidden md:block border-l pl-4 border-slate-200">
-              KI-Analyse aktiv
+              Multi-Anbieter KI-Analyse
             </div>
           </div>
         </div>
@@ -148,9 +163,9 @@ const App: React.FC = () => {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-2">
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Historische Stromdaten</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Ihre Stromverbrauchs-Historie</h2>
             <p className="text-slate-600 mb-6">
-              Laden Sie Ihre monatlichen Rechnungen hoch, um Ihre langfristige Verbrauchs-Historie zu pflegen. Daten werden lokal in Ihrem Browser gespeichert.
+              Laden Sie Ihre PDF-Stromrechnungen hoch. Unsere KI extrahiert Kosten und Verbrauch für Ihr persönliches Dashboard.
             </p>
             <Uploader onUpload={handleUpload} processingState={processingState} />
           </div>
@@ -158,7 +173,7 @@ const App: React.FC = () => {
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm self-start">
             <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
               <History className="w-4 h-4 text-indigo-500" />
-              Zeitraum wählen
+              Zeitraum filtern
             </h3>
             <div className="space-y-2">
               <button 
@@ -177,11 +192,6 @@ const App: React.FC = () => {
                 </button>
               ))}
             </div>
-            {invoices.length === 0 && (
-              <p className="text-xs text-slate-400 mt-4 italic text-center">
-                Noch keine Daten vorhanden.
-              </p>
-            )}
           </div>
         </div>
 
@@ -196,8 +206,8 @@ const App: React.FC = () => {
              <div className="inline-block p-6 rounded-full bg-slate-50 mb-4">
                <LayoutDashboard className="w-12 h-12 text-slate-300" />
              </div>
-             <h3 className="text-lg font-medium text-slate-900">Bereit für die Analyse</h3>
-             <p className="text-slate-400 max-w-xs mx-auto">Laden Sie Ihre erste Tibber Rechnung hoch, um das Dashboard zu aktivieren.</p>
+             <h3 className="text-lg font-medium text-slate-900">Keine Daten vorhanden</h3>
+             <p className="text-slate-400 max-w-xs mx-auto">Laden Sie eine Stromrechnung hoch, um die Analyse zu starten.</p>
           </div>
         )}
       </main>

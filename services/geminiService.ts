@@ -4,13 +4,11 @@ import { InvoiceData } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Helper to convert File to Base64
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // Remove data URL prefix (e.g., "data:application/pdf;base64,")
       const base64 = result.split(',')[1];
       resolve(base64);
     };
@@ -21,20 +19,22 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 export const analyzeInvoiceWithGemini = async (file: File): Promise<Omit<InvoiceData, 'id' | 'fileName'>> => {
   const base64Data = await fileToBase64(file);
-
-  // Use gemini-3-flash-preview for extraction tasks as per guidelines
   const model = "gemini-3-flash-preview";
 
   const prompt = `
-    Analysiere diese Stromrechnung von Tibber.
+    Analysiere diese Stromrechnung im Detail.
     Extrahiere folgende Daten:
-    1. Den Monat und das Jahr, auf das sich die Rechnung bezieht (Leistungszeitraum).
-    2. Den Gesamtverbrauch in kWh.
-    3. Den Rechnungsbetrag (Gesamtsumme) in Euro.
+    1. Zeitraum: Monat (Deutsch) und Jahr.
+    2. Verbrauch: Gesamt-kWh.
+    3. Gesamtsumme: Rechnungsbetrag in Euro.
+    4. Preisaufteilung (versuche die Beträge so genau wie möglich zuzuordnen):
+       - Grundpreis-Kosten (fixe monatliche Gebühr)
+       - Arbeitspreis-Kosten (reine Energiekosten basierend auf Verbrauch)
+       - Netzentgelte/Netznutzung (falls separat aufgeführt, sonst zu Arbeitspreis)
+       - Steuern & Abgaben (MwSt, Stromsteuer, Umlagen)
     
-    Gib das Ergebnis im JSON-Format zurück.
-    Der Monat soll als deutscher String zurückgegeben werden (z.B. "Januar").
-    Der monthIndex soll 0 für Januar, 1 für Februar usw. sein.
+    WICHTIG: Die Summe der Einzelposten sollte in etwa der Gesamtsumme entsprechen.
+    Gib das Ergebnis als JSON zurück.
   `;
 
   try {
@@ -42,12 +42,7 @@ export const analyzeInvoiceWithGemini = async (file: File): Promise<Omit<Invoice
       model: model,
       contents: {
         parts: [
-          {
-            inlineData: {
-              mimeType: file.type,
-              data: base64Data
-            }
-          },
+          { inlineData: { mimeType: file.type, data: base64Data } },
           { text: prompt }
         ]
       },
@@ -56,21 +51,22 @@ export const analyzeInvoiceWithGemini = async (file: File): Promise<Omit<Invoice
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            month: { type: Type.STRING, description: "Monatsname auf Deutsch, z.B. Januar" },
-            monthIndex: { type: Type.INTEGER, description: "0-basierter Index des Monats (0=Jan, 11=Dez)" },
+            month: { type: Type.STRING },
+            monthIndex: { type: Type.INTEGER },
             year: { type: Type.INTEGER },
-            consumptionKwh: { type: Type.NUMBER, description: "Verbrauch in kWh" },
-            totalCost: { type: Type.NUMBER, description: "Gesamtbetrag in Euro" },
+            consumptionKwh: { type: Type.NUMBER },
+            totalCost: { type: Type.NUMBER },
+            baseFeeCost: { type: Type.NUMBER, description: "Summe Grundpreis" },
+            workingPriceCost: { type: Type.NUMBER, description: "Summe Arbeitspreis/Energie" },
+            gridFeesCost: { type: Type.NUMBER, description: "Summe Netzentgelte" },
+            taxesAndLeviesCost: { type: Type.NUMBER, description: "Summe Steuern und Abgaben" },
           },
-          required: ["month", "monthIndex", "year", "consumptionKwh", "totalCost"],
+          required: ["month", "monthIndex", "year", "consumptionKwh", "totalCost", "baseFeeCost", "workingPriceCost", "gridFeesCost", "taxesAndLeviesCost"],
         }
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("Keine Antwort von Gemini erhalten.");
-
-    const data = JSON.parse(text);
+    const data = JSON.parse(response.text || "{}");
 
     return {
       month: data.month,
@@ -78,11 +74,14 @@ export const analyzeInvoiceWithGemini = async (file: File): Promise<Omit<Invoice
       year: data.year,
       consumptionKwh: data.consumptionKwh,
       totalCost: data.totalCost,
-      avgPriceCent: (data.totalCost / data.consumptionKwh) * 100
+      baseFeeCost: data.baseFeeCost,
+      workingPriceCost: data.workingPriceCost,
+      gridFeesCost: data.gridFeesCost,
+      taxesAndLeviesCost: data.taxesAndLeviesCost,
+      avgPriceCent: data.consumptionKwh > 0 ? (data.totalCost / data.consumptionKwh) * 100 : 0
     };
-
   } catch (error) {
-    console.error("Fehler bei der Analyse:", error);
-    throw new Error("Die Rechnung konnte nicht verarbeitet werden.");
+    console.error("Analysefehler:", error);
+    throw new Error("Detaillierte Analyse fehlgeschlagen.");
   }
 };
