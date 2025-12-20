@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Euro, Zap, TrendingUp, Calendar } from 'lucide-react';
 import { InvoiceData } from '../types';
@@ -26,33 +27,35 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({ invoices }) => {
     </div>
   );
 
+  const yearsCount = Array.from(new Set(invoices.map(i => i.year))).length;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <Card 
-        title="Gesamtkosten 2025" 
+        title="Gesamtkosten" 
         value={`${totalCost.toFixed(2)} €`}
-        subtext={`${invoices.length} Rechnungen erfasst`}
+        subtext={`${invoices.length} Monate aus ${yearsCount} Jahr(en)`}
         icon={Euro}
         colorClass="bg-emerald-500"
       />
       <Card 
         title="Gesamtverbrauch" 
-        value={`${Math.round(totalConsumption)} kWh`}
-        subtext="Im Jahr 2025"
+        value={`${Math.round(totalConsumption).toLocaleString()} kWh`}
+        subtext="Summe gewählter Zeitraum"
         icon={Zap}
         colorClass="bg-amber-500"
       />
       <Card 
         title="Ø Strompreis" 
         value={`${avgPricePerKwh.toFixed(1)} ct/kWh`}
-        subtext="Effektiver Durchschnitt"
+        subtext="Effektiver Schnitt"
         icon={TrendingUp}
         colorClass="bg-indigo-500"
       />
       <Card 
         title="Ø Monatliche Kosten" 
         value={`${avgMonthlyCost.toFixed(2)} €`}
-        subtext="Basierend auf Daten"
+        subtext="Über alle gewählten Monate"
         icon={Calendar}
         colorClass="bg-sky-500"
       />

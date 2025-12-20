@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { InvoiceData } from "../types";
 
@@ -21,7 +22,8 @@ const fileToBase64 = (file: File): Promise<string> => {
 export const analyzeInvoiceWithGemini = async (file: File): Promise<Omit<InvoiceData, 'id' | 'fileName'>> => {
   const base64Data = await fileToBase64(file);
 
-  const model = "gemini-2.5-flash"; // Excellent for document understanding
+  // Use gemini-3-flash-preview for extraction tasks as per guidelines
+  const model = "gemini-3-flash-preview";
 
   const prompt = `
     Analysiere diese Stromrechnung von Tibber.

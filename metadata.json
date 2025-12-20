@@ -1,5 +1,5 @@
 {
-  "name": "Tibber Rechnungsanalyse",
-  "description": "Laden Sie Ihre Tibber PDF-Rechnungen hoch, um eine automatische Analyse Ihrer Stromkosten, Verbräuche und Durchschnittspreise für 2025 in einem interaktiven Dashboard zu erhalten.",
+  "name": "Tibber Historien-Analyzer",
+  "description": "Laden Sie Ihre Tibber PDF-Rechnungen hoch, um eine dauerhafte Historie Ihrer Stromkosten, Verbräuche und Trends über mehrere Jahre hinweg zu verwalten.",
   "requestFramePermissions": []
 }
