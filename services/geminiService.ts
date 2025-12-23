@@ -27,7 +27,8 @@ export const analyzeInvoiceWithGemini = async (file: File): Promise<Omit<Invoice
     1. Zeitraum: Monat (Deutsch) und Jahr.
     2. Verbrauch: Gesamt-kWh.
     3. Gesamtsumme: Rechnungsbetrag in Euro.
-    4. Preisaufteilung (versuche die Beträge so genau wie möglich zuzuordnen):
+    4. Anbieter: Name des Stromunternehmens (z.B. Tibber, Vattenfall, E.ON, Stadtwerke etc.).
+    5. Preisaufteilung (versuche die Beträge so genau wie möglich zuzuordnen):
        - Grundpreis-Kosten (fixe monatliche Gebühr)
        - Arbeitspreis-Kosten (reine Energiekosten basierend auf Verbrauch)
        - Netzentgelte/Netznutzung (falls separat aufgeführt, sonst zu Arbeitspreis)
@@ -56,12 +57,13 @@ export const analyzeInvoiceWithGemini = async (file: File): Promise<Omit<Invoice
             year: { type: Type.INTEGER },
             consumptionKwh: { type: Type.NUMBER },
             totalCost: { type: Type.NUMBER },
+            provider: { type: Type.STRING, description: "Name des Stromanbieters" },
             baseFeeCost: { type: Type.NUMBER, description: "Summe Grundpreis" },
             workingPriceCost: { type: Type.NUMBER, description: "Summe Arbeitspreis/Energie" },
             gridFeesCost: { type: Type.NUMBER, description: "Summe Netzentgelte" },
             taxesAndLeviesCost: { type: Type.NUMBER, description: "Summe Steuern und Abgaben" },
           },
-          required: ["month", "monthIndex", "year", "consumptionKwh", "totalCost", "baseFeeCost", "workingPriceCost", "gridFeesCost", "taxesAndLeviesCost"],
+          required: ["month", "monthIndex", "year", "consumptionKwh", "totalCost", "provider", "baseFeeCost", "workingPriceCost", "gridFeesCost", "taxesAndLeviesCost"],
         }
       }
     });
@@ -74,6 +76,7 @@ export const analyzeInvoiceWithGemini = async (file: File): Promise<Omit<Invoice
       year: data.year,
       consumptionKwh: data.consumptionKwh,
       totalCost: data.totalCost,
+      provider: data.provider || "Unbekannt",
       baseFeeCost: data.baseFeeCost,
       workingPriceCost: data.workingPriceCost,
       gridFeesCost: data.gridFeesCost,

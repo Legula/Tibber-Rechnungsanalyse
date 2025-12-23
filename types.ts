@@ -8,6 +8,7 @@ export interface InvoiceData {
   totalCost: number;
   avgPriceCent: number;
   fileName: string;
+  provider: string; // Name des Stromanbieters
   // Preisbestandteile
   baseFeeCost: number;       // Fixer Grundpreis
   workingPriceCost: number;  // Kosten für verbrauchte Energie (Arbeitspreis)

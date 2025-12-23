@@ -28,6 +28,20 @@ export const Charts: React.FC<ChartsProps> = ({ invoices, isAllYears }) => {
     }));
   }, [invoices, isAllYears]);
 
+  const yearlyComparisonData = useMemo(() => {
+    const yearlyTotals: Record<number, { year: number; totalCost: number; consumption: number }> = {};
+    
+    invoices.forEach(inv => {
+      if (!yearlyTotals[inv.year]) {
+        yearlyTotals[inv.year] = { year: inv.year, totalCost: 0, consumption: 0 };
+      }
+      yearlyTotals[inv.year].totalCost += inv.totalCost;
+      yearlyTotals[inv.year].consumption += inv.consumptionKwh;
+    });
+
+    return Object.values(yearlyTotals).sort((a, b) => a.year - b.year);
+  }, [invoices]);
+
   const distributionData = useMemo(() => {
     if (invoices.length === 0) return [];
     const totals = invoices.reduce((acc, curr) => ({
@@ -64,6 +78,31 @@ export const Charts: React.FC<ChartsProps> = ({ invoices, isAllYears }) => {
 
   return (
     <div className="space-y-6 mb-8">
+      {/* New Yearly Comparison Chart */}
+      {yearlyComparisonData.length > 1 && (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h3 className="text-lg font-semibold text-slate-800 mb-6">Jahresvergleich: Gesamtausgaben</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={yearlyComparisonData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="year" tick={{ fill: '#64748b' }} axisLine={false} />
+                <YAxis tick={{ fill: '#64748b' }} axisLine={false} unit=" €" />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar 
+                  dataKey="totalCost" 
+                  name="Jahreskosten" 
+                  fill="#6366f1" 
+                  radius={[4, 4, 0, 0]} 
+                  unit="€"
+                  label={{ position: 'top', fill: '#64748b', fontSize: 12, formatter: (val: number) => `${val.toFixed(0)}€` }}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Cost Breakdown Stacked Chart */}
         <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
